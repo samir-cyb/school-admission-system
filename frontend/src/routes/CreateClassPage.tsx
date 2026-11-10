@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { CircleCheck } from "lucide-react";
@@ -38,16 +38,21 @@ export function CreateClassPage() {
   const [created, setCreated] = useState<ClassCreated | null>(null);
   const nameId = useId();
   const seatsId = useId();
+  const nameRef = useRef<HTMLInputElement>(null);
+  const seatsRef = useRef<HTMLInputElement>(null);
 
   const nameError = validateName(name);
   const seatsValue = parseSeats(seats);
   const seatsError = seatsValue === null ? "create.seatsInvalid" : null;
-  const canSubmit = !nameError && !seatsError && !create.isPending;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (create.isPending) return;
+    // The button is never silently disabled: a click with a mistake shows every message
+    // and puts the cursor on the first field to fix.
     setTouched({ name: true, seats: true });
-    if (nameError || seatsValue === null) return;
+    if (nameError) return nameRef.current?.focus();
+    if (seatsValue === null) return seatsRef.current?.focus();
 
     setServerError(null);
     create.mutate(
@@ -55,10 +60,11 @@ export function CreateClassPage() {
       {
         onSuccess: (cls) => {
           setCreated(cls);
+          // Ready for the next shift: clear the name, keep the seat count, cursor back in the name box.
           setName("");
-          setSeats("");
           setTouched({ name: false, seats: false });
           toast.show("success", t("toast.created"));
+          requestAnimationFrame(() => nameRef.current?.focus());
         },
         onError: (err) => {
           const msg = errorText(err);
@@ -95,7 +101,11 @@ export function CreateClassPage() {
             autoComplete="off"
             aria-invalid={(touched.name && !!nameError) || undefined}
             aria-describedby={`${nameId}-msg`}
-            onChange={(e) => setName(e.target.value)}
+            ref={nameRef}
+            onChange={(e) => {
+              setName(e.target.value);
+              setServerError(null);
+            }}
             onBlur={() => setTouched((s) => ({ ...s, name: true }))}
           />
           <p id={`${nameId}-msg`} className={touched.name && nameError ? "field-msg field-msg--error" : "field-msg"}>
@@ -114,7 +124,11 @@ export function CreateClassPage() {
             placeholder="120"
             aria-invalid={(touched.seats && !!seatsError) || undefined}
             aria-describedby={`${seatsId}-msg`}
-            onChange={(e) => setSeats(e.target.value)}
+            ref={seatsRef}
+            onChange={(e) => {
+              setSeats(e.target.value);
+              setServerError(null);
+            }}
             onBlur={() => setTouched((s) => ({ ...s, seats: true }))}
           />
           <p id={`${seatsId}-msg`} className={touched.seats && seatsError ? "field-msg field-msg--error" : "field-msg"}>
@@ -123,7 +137,7 @@ export function CreateClassPage() {
         </div>
 
         <div className="form__actions">
-          <Button type="submit" loading={create.isPending} disabled={!canSubmit && (touched.name || touched.seats)}>
+          <Button type="submit" loading={create.isPending}>
             {t("create.submit")}
           </Button>
         </div>

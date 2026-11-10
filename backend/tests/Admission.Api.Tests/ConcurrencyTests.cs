@@ -23,7 +23,7 @@ public sealed class ConcurrencyTests(TestDatabase db)
         var start = new TaskCompletionSource();
         var requests = Enumerable.Range(0, applicants).Select(async _ =>
         {
-            var student = Api.NewStudentId();
+            var student = TestApi.NewStudentId();
             await start.Task;
             return await http.HoldAsync(classId, student);
         }).ToList();
@@ -53,7 +53,7 @@ public sealed class ConcurrencyTests(TestDatabase db)
         await using var app = new ApiFactory(db.ConnectionString);
         var http = app.CreateClient();
         var classId = await http.CreateClassAsync(50);
-        var student = Api.NewStudentId();
+        var student = TestApi.NewStudentId();
 
         var responses = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => http.HoldAsync(classId, student)));
 
@@ -80,7 +80,7 @@ public sealed class ConcurrencyTests(TestDatabase db)
         var start = new TaskCompletionSource();
         var requests = Enumerable.Range(0, 120).Select(async i =>
         {
-            var student = Api.NewStudentId();
+            var student = TestApi.NewStudentId();
             await start.Task;
             return await (i % 2 == 0 ? http1 : http2).HoldAsync(classId, student);
         }).ToList();
@@ -99,7 +99,7 @@ public sealed class ConcurrencyTests(TestDatabase db)
         await using var app = new ApiFactory(db.ConnectionString);
         var http = app.CreateClient();
         var classId = await http.CreateClassAsync(5);
-        var student = Api.NewStudentId();
+        var student = TestApi.NewStudentId();
         var holdId = await http.HoldIdAsync(classId, student);
 
         var responses = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => http.ConfirmAsync(holdId, student)));

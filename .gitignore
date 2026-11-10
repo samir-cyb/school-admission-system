@@ -5,6 +5,8 @@
 docs/
 CLAUDE.md
 *.pdf
+# Unverified end-to-end experiment, deliberately not submitted
+e2e/
 
 # ---------------- secrets & local config ----------------
 .env

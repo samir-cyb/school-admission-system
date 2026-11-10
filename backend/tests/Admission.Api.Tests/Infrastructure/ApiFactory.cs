@@ -27,7 +27,7 @@ public sealed class ApiFactory(string connectionString, int holdDurationSeconds 
 }
 
 /// <summary>Small helpers so tests read like the API contract.</summary>
-public static class Api
+public static class TestApi
 {
     public const string Header = "X-Student-Id";
 

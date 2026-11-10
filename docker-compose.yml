@@ -2,7 +2,7 @@
 #   frontend  http://localhost:5173
 #   backend   http://localhost:8080
 #   db        PostgreSQL 16 (not published to the host)
-# Tests:  docker compose --profile test run --rm tests
+# Tests:  docker compose --profile test run --rm --build tests
 # Bonus:  docker compose --profile bonus up   (second backend on :8081, same database)
 
 name: school-admission

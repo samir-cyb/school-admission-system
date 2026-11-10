@@ -45,14 +45,21 @@ Language (বাংলা / English) and theme (system / light / dark) toggles a
 
 ## Tests
 
-### Backend (required: ≥ 3 tests including a concurrency test)
+**97 automated tests** in two layers.
+
+| Layer | Command | Count | What it proves |
+|---|---|---|---|
+| Backend unit + integration (xUnit, real PostgreSQL) | `docker compose --profile test run --rm --build tests` | 75 | Rules, validation, concurrency, expiry, contract |
+| Frontend components (Vitest + Testing Library) | `cd frontend && npm ci && npm test` | 22 | Screens, errors, countdown, forms |
+
+### Backend (required by the brief: ≥ 3 tests including a concurrency test)
 
 ```bash
-docker compose --profile test run --rm tests
+docker compose --profile test run --rm --build tests
 ```
 
-Runs the xUnit integration suite against the compose PostgreSQL (each run creates and drops its own
-throw-away database, so app data is untouched). Highlights:
+Integration tests boot the real API against the compose PostgreSQL (each run creates and drops its own
+throw-away database, so app data is untouched); unit tests cover the pure rules. Highlights:
 
 | Test | Shows |
 |---|---|
@@ -61,8 +68,9 @@ throw-away database, so app data is untouched). Highlights:
 | `Same_student_applying_in_parallel_gets_exactly_one_hold` | one active application per student per class, under concurrency |
 | `Confirming_the_same_hold_many_times_counts_once` | 5 parallel confirms → all `200`, `confirmedSeats` = 1 |
 | `Hold_expires_by_itself_and_the_seat_comes_back` | `HOLD_DURATION_SECONDS=2`: EXPIRED with no API call, seat reusable, confirm → `409` |
-| `All_eight_endpoints_return_the_documented_shapes` | exact field names of the PDF contract |
+| `All_eight_endpoints_return_the_documented_shapes` | exact field names of the contract |
 | `Create_class_rejects_bad_input_with_400` and friends | malformed JSON, wrong types, bad header, unknown ids → 4xx, never 500 |
+| `UnitTests.cs` | 17-digit id rules and log masking, id format, config parsing (bad `HOLD_DURATION_SECONDS` fails fast), body validation, error mapping never leaks internals |
 
 ### Frontend (bonus)
 
@@ -72,9 +80,10 @@ npm ci
 npm test
 ```
 
-Vitest + Testing Library: student-id normalisation, Bangla/English error messages, class list
-rendering and apply flow (`X-Student-Id` header, 409 message), and the countdown flipping the application
-to EXPIRED and disabling **ভর্তি ফি দিন** without a reload.
+Vitest + Testing Library: student-id normalisation (Bangla digits), Bangla/English error messages,
+class list rendering and apply flow (`X-Student-Id` header, 409 message), the countdown flipping to
+EXPIRED and disabling **ভর্তি ফি দিন** without a reload, the create-class form, my applications
+(grouping, empty state, server down) and the identity box.
 
 ### Bonus: two backend processes, same database
 

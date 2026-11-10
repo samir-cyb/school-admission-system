@@ -25,7 +25,7 @@ public sealed class ContractAndValidationTests(TestDatabase db)
     {
         await using var app = new ApiFactory(db.ConnectionString);
         var http = app.CreateClient();
-        var student = Api.NewStudentId();
+        var student = TestApi.NewStudentId();
 
         // 1 POST /classes
         var createRes = await http.PostAsync("/classes",
@@ -83,7 +83,7 @@ public sealed class ContractAndValidationTests(TestDatabase db)
         Assert.Equal("CONFIRMED", confirmed.GetProperty("status").GetString());
 
         // 7 DELETE /holds/{id} → 204 (on a fresh hold)
-        var other = Api.NewStudentId();
+        var other = TestApi.NewStudentId();
         var holdToCancel = await http.HoldIdAsync(classId, other);
         var del = await http.CancelAsync(holdToCancel, other);
         Assert.Equal(HttpStatusCode.NoContent, del.StatusCode);
@@ -126,7 +126,7 @@ public sealed class ContractAndValidationTests(TestDatabase db)
     }
 
     [Theory]
-    [InlineData(null)]                    // missing
+    [InlineData(new object?[] { null })]  // header missing entirely
     [InlineData("")]                      // empty
     [InlineData("1234567890123456")]      // 16 digits
     [InlineData("123456789012345678")]    // 18 digits
@@ -150,7 +150,7 @@ public sealed class ContractAndValidationTests(TestDatabase db)
         await using var app = new ApiFactory(db.ConnectionString);
         var http = app.CreateClient();
         var classId = await http.CreateClassAsync(5);
-        var holdId = await http.HoldIdAsync(classId, Api.NewStudentId());
+        var holdId = await http.HoldIdAsync(classId, TestApi.NewStudentId());
 
         Assert.Equal(HttpStatusCode.BadRequest, (await http.ConfirmAsync(holdId, null)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await http.CancelAsync(holdId, null)).StatusCode);
@@ -163,7 +163,7 @@ public sealed class ContractAndValidationTests(TestDatabase db)
     {
         await using var app = new ApiFactory(db.ConnectionString);
         var http = app.CreateClient();
-        var student = Api.NewStudentId();
+        var student = TestApi.NewStudentId();
 
         Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync("/classes/c_aaaaaaaaaaaaaaaaaaaa")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync("/classes/not-an-id")).StatusCode);

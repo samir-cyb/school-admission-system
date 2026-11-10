@@ -12,11 +12,11 @@ public sealed class HoldLifecycleTests(TestDatabase db)
         await using var app = new ApiFactory(db.ConnectionString, holdDurationSeconds: 2);
         var http = app.CreateClient();
         var classId = await http.CreateClassAsync(1);
-        var student = Api.NewStudentId();
+        var student = TestApi.NewStudentId();
         var holdId = await http.HoldIdAsync(classId, student);
 
         // Seat is taken while the hold is alive.
-        Assert.Equal(HttpStatusCode.Conflict, (await http.HoldAsync(classId, Api.NewStudentId())).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await http.HoldAsync(classId, TestApi.NewStudentId())).StatusCode);
 
         await Task.Delay(TimeSpan.FromSeconds(3.5)); // no API call in between
 
@@ -35,7 +35,7 @@ public sealed class HoldLifecycleTests(TestDatabase db)
         Assert.Equal("EXPIRED", await db.StringAsync("SELECT status FROM holds WHERE id = @h", ("h", holdId)));
 
         // Someone else can now take the seat.
-        Assert.Equal(HttpStatusCode.Created, (await http.HoldAsync(classId, Api.NewStudentId())).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await http.HoldAsync(classId, TestApi.NewStudentId())).StatusCode);
     }
 
     [Fact]
@@ -44,8 +44,8 @@ public sealed class HoldLifecycleTests(TestDatabase db)
         await using var app = new ApiFactory(db.ConnectionString);
         var http = app.CreateClient();
         var classId = await http.CreateClassAsync(1);
-        var a = Api.NewStudentId();
-        var b = Api.NewStudentId();
+        var a = TestApi.NewStudentId();
+        var b = TestApi.NewStudentId();
 
         var holdA = await http.HoldIdAsync(classId, a);
         Assert.Equal(HttpStatusCode.Conflict, (await http.HoldAsync(classId, b)).StatusCode);
@@ -70,7 +70,7 @@ public sealed class HoldLifecycleTests(TestDatabase db)
         var http = app.CreateClient();
         var classId = await http.CreateClassAsync(10);
         var otherClass = await http.CreateClassAsync(10, "Class 6 - Day Shift");
-        var student = Api.NewStudentId();
+        var student = TestApi.NewStudentId();
 
         var first = await http.HoldIdAsync(classId, student);
         var second = await http.HoldAsync(classId, student);
@@ -91,8 +91,8 @@ public sealed class HoldLifecycleTests(TestDatabase db)
         await using var app = new ApiFactory(db.ConnectionString);
         var http = app.CreateClient();
         var classId = await http.CreateClassAsync(3);
-        var owner = Api.NewStudentId();
-        var stranger = Api.NewStudentId();
+        var owner = TestApi.NewStudentId();
+        var stranger = TestApi.NewStudentId();
         var holdId = await http.HoldIdAsync(classId, owner);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await http.ConfirmAsync(holdId, stranger)).StatusCode);
@@ -113,8 +113,8 @@ public sealed class HoldLifecycleTests(TestDatabase db)
         var http = app.CreateClient();
         var morning = await http.CreateClassAsync(5, "Class 7 - Morning Shift");
         var day = await http.CreateClassAsync(5, "Class 7 - Day Shift");
-        var me = Api.NewStudentId();
-        var someoneElse = Api.NewStudentId();
+        var me = TestApi.NewStudentId();
+        var someoneElse = TestApi.NewStudentId();
 
         var older = await http.HoldIdAsync(morning, me);
         await Task.Delay(50);
