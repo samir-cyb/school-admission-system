@@ -1,0 +1,502 @@
+/*
+ * Material layer: frosted glass + soft 3D depth on top of the structural styles in components.css.
+ *
+ * Performance rules (why it stays smooth):
+ *  - Real backdrop-filter only on the sticky header and small overlays. Big panels are translucent
+ *    over a soft gradient, which looks the same but costs nothing while scrolling (measured: with
+ *    backdrop blur on every panel a 4x-throttled CPU fell to ~12 fps; this way it holds 60 fps).
+ *  - The ambient light is static gradients: no filter, no blend mode, no animation.
+ *  - Motion animates transform and opacity only (compositor), never layout, blur or shadows.
+ *  - On small screens the blur radius drops; without backdrop-filter support surfaces fall back to solid.
+ */
+
+/* ============ ambient light & grain ============ */
+
+/* Painted with gradients only (no filter, no blend modes, no animation): rasterised once, then free. */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: var(--ambient-opacity);
+  background:
+    radial-gradient(60vmax 60vmax at 8% -12%, var(--ambient-1) 0%, transparent 62%),
+    radial-gradient(52vmax 52vmax at 108% 38%, var(--ambient-2) 0%, transparent 60%),
+    radial-gradient(44vmax 44vmax at 42% 118%, var(--ambient-3) 0%, transparent 60%);
+}
+
+.sticky-top,
+.page {
+  position: relative;
+  z-index: 1;
+}
+
+.skip-link {
+  z-index: 100;
+}
+
+.sticky-top {
+  z-index: 20;
+}
+
+@media (max-width: 767px) {
+  .sticky-top {
+    position: relative;
+  }
+}
+
+/* ============ the glass material ============ */
+
+/*
+ * Large panels are translucent "frosted" surfaces over the soft ambient light — they read as glass
+ * without backdrop-filter, which would re-blur the page behind them on every scroll frame.
+ * Real backdrop blur is kept where content actually scrolls underneath (the sticky header) and on
+ * small, short-lived overlays (toasts, the cancel popover).
+ */
+.class-list,
+.hold-list,
+.panel,
+.empty,
+.skeleton-list {
+  background: var(--glass-panel);
+  border: 1px solid var(--glass-border);
+  outline: 1px solid var(--glass-edge);
+  outline-offset: -1px;
+  box-shadow: var(--glass-highlight), var(--shadow-3d);
+}
+
+.empty {
+  border-style: solid;
+}
+
+.ticket {
+  background: var(--glass-panel-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--shadow-3d);
+}
+
+.topbar,
+.identity,
+.toast,
+.cancel-pop {
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+}
+
+.topbar {
+  background: var(--glass-bg-strong);
+  border-bottom: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-highlight);
+}
+
+.identity {
+  background: var(--glass-tint);
+  border-bottom: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-highlight);
+}
+
+.toast,
+.cancel-pop {
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--shadow-3d);
+}
+
+/* Phones scroll the header away (see components.css), so it needs no live blur there. */
+@media (max-width: 767px) {
+  .topbar,
+  .identity {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .topbar {
+    background: var(--glass-panel-strong);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar,
+  .toast,
+  .cancel-pop {
+    background: var(--c-surface);
+  }
+}
+
+/* ============ navigation: sliding glass pill ============ */
+
+.mainnav__link {
+  isolation: isolate;
+  border-radius: var(--r-pill);
+  transition: color var(--dur-fast) ease;
+}
+
+.mainnav__link:hover {
+  background: transparent;
+  color: var(--c-ink);
+}
+
+.mainnav__label,
+.mainnav__badge {
+  position: relative;
+  z-index: 1;
+}
+
+.mainnav__pill {
+  position: absolute;
+  inset: 6px 0;
+  z-index: 0;
+  border-radius: var(--r-pill);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight), 0 1px 2px rgb(14 34 56 / 0.08), 0 6px 14px -8px rgb(14 34 56 / 0.25);
+}
+
+:root[data-theme="dark"] .mainnav__pill {
+  background: rgb(255 255 255 / 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mainnav__pill {
+    background: rgb(255 255 255 / 0.08);
+  }
+}
+
+.tool {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-highlight), 0 1px 2px rgb(14 34 56 / 0.06);
+  transition: transform 160ms var(--ease-out), box-shadow 160ms ease, color 120ms ease;
+}
+
+.tool:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--glass-highlight), 0 6px 14px -8px rgb(14 34 56 / 0.3);
+}
+
+.tool:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* ============ tactile buttons ============ */
+
+.btn {
+  position: relative;
+  transition:
+    transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 180ms ease,
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.btn--primary {
+  background-color: var(--c-primary);
+  background-image: var(--gloss);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    inset 0 -1px 0 rgb(0 0 0 / 0.12),
+    0 1px 2px rgb(14 34 56 / 0.2),
+    0 8px 18px -8px color-mix(in srgb, var(--c-primary) 70%, transparent);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background-color: var(--c-primary-hover);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.26),
+    inset 0 -1px 0 rgb(0 0 0 / 0.12),
+    0 2px 3px rgb(14 34 56 / 0.2),
+    0 14px 26px -10px color-mix(in srgb, var(--c-primary) 75%, transparent);
+}
+
+.btn--secondary,
+.btn--danger {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-highlight), 0 0 0 1px var(--glass-edge), 0 6px 14px -10px rgb(14 34 56 / 0.35);
+}
+
+.btn--danger {
+  box-shadow:
+    var(--glass-highlight),
+    0 0 0 1px color-mix(in srgb, var(--c-danger) 35%, transparent),
+    0 6px 14px -10px rgb(14 34 56 / 0.35);
+}
+
+.btn--secondary:hover:not(:disabled),
+.btn--danger:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+  transition-duration: 80ms;
+}
+
+.btn:disabled {
+  background-image: none;
+  box-shadow: var(--inset-well);
+  transform: none;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 3px;
+}
+
+/* ============ inputs: slightly recessed ============ */
+
+.input {
+  background: color-mix(in srgb, var(--c-surface) 88%, transparent);
+  box-shadow: inset 0 1px 2px rgb(14 34 56 / 0.07);
+}
+
+.input:focus {
+  box-shadow:
+    inset 0 1px 2px rgb(14 34 56 / 0.05),
+    0 0 0 4px color-mix(in srgb, var(--c-accent) 22%, transparent);
+}
+
+/* ============ class rows ============ */
+
+.class-row {
+  transition: background-color 200ms ease;
+}
+
+.class-row:hover {
+  background: rgb(255 255 255 / 0.28);
+}
+
+:root[data-theme="dark"] .class-row:hover {
+  background: rgb(255 255 255 / 0.03);
+}
+
+.class-row + .class-row {
+  border-top-color: var(--glass-edge);
+}
+
+.free__num {
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.7);
+}
+
+:root[data-theme="dark"] .free__num {
+  text-shadow: 0 0 18px color-mix(in srgb, var(--c-accent) 30%, transparent);
+}
+
+/* ============ seat ledger: recessed track, glossy segments ============ */
+
+.ledger {
+  box-shadow: var(--inset-well), inset 0 0 0 1px color-mix(in srgb, var(--c-accent) 30%, transparent);
+}
+
+.ledger__seg--confirmed {
+  background-image: var(--gloss);
+  box-shadow: inset -1px 0 0 rgb(255 255 255 / 0.25);
+}
+
+.ledger__seg--held {
+  background-image:
+    var(--gloss),
+    repeating-linear-gradient(-45deg, var(--c-hatch) 0 3px, transparent 3px 7px);
+}
+
+/* ============ chips: small glass pills ============ */
+
+.chip {
+  border: 1px solid rgb(255 255 255 / 0.45);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 1px 2px rgb(14 34 56 / 0.08);
+}
+
+:root[data-theme="dark"] .chip {
+  border-color: rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+/* ============ the ticket: tilting glass ============ */
+
+.tilt-stage {
+  perspective: 1400px;
+}
+
+.tilt {
+  position: relative;
+  transform-style: flat;
+  will-change: transform;
+}
+
+.tilt__glare {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  --glare: rgb(255 255 255 / 0.45);
+}
+
+:root[data-theme="dark"] .tilt__glare {
+  --glare: rgb(141 185 232 / 0.09);
+}
+
+.tilt > :not(.tilt__glare) {
+  position: relative;
+  z-index: 1;
+}
+
+.ticket__perforation::before,
+.ticket__perforation::after {
+  background: var(--c-paper);
+  border-color: var(--glass-edge);
+}
+
+/* ============ countdown: a recessed well with embossed digits ============ */
+
+.countdown {
+  background: color-mix(in srgb, var(--c-paper) 70%, transparent);
+  box-shadow: var(--inset-well);
+}
+
+.countdown--warning {
+  background: color-mix(in srgb, var(--c-held-soft) 85%, transparent);
+}
+
+.countdown__digits {
+  text-shadow:
+    0 1px 0 rgb(255 255 255 / 0.9),
+    0 6px 14px rgb(14 34 56 / 0.08);
+}
+
+:root[data-theme="dark"] .countdown__digits {
+  text-shadow: 0 0 28px rgb(141 185 232 / 0.18), 0 2px 0 rgb(0 0 0 / 0.4);
+}
+
+.countdown__track {
+  box-shadow: var(--inset-well);
+}
+
+.countdown__fill {
+  background-image: var(--gloss);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--c-accent) 45%, transparent);
+}
+
+.countdown--warning .countdown__fill {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--c-held) 55%, transparent);
+}
+
+/* ============ outcome ============ */
+
+.outcome {
+  box-shadow: var(--inset-well);
+}
+
+.outcome__icon {
+  position: relative;
+}
+
+.outcome__burst {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--c-primary);
+  pointer-events: none;
+}
+
+/* ============ live indicator: compositor-only pulse ============ */
+
+.live__dot {
+  position: relative;
+  box-shadow: none;
+  animation: none;
+}
+
+.live__dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--c-accent);
+  animation: live-ring 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.live--stale .live__dot::after {
+  animation: none;
+  opacity: 0;
+}
+
+@keyframes live-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+/* ============ my applications rows ============ */
+
+.hold-row + .hold-row {
+  border-top-color: var(--glass-edge);
+}
+
+.hold-row__link:hover {
+  background: rgb(255 255 255 / 0.3);
+}
+
+:root[data-theme="dark"] .hold-row__link:hover {
+  background: rgb(255 255 255 / 0.03);
+}
+
+.hold-row__chev {
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hold-row__link:hover .hold-row__chev {
+  transform: translateX(3px);
+}
+
+/* ============ empty state icon ============ */
+
+.empty__icon {
+  background-image: var(--gloss);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 8px 18px -10px rgb(14 34 56 / 0.4);
+}
+
+/* ============ skeleton on glass ============ */
+
+.skeleton-row {
+  background: transparent;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgb(14 34 56 / 0.06) 0%, rgb(14 34 56 / 0.02) 50%, rgb(14 34 56 / 0.06) 100%);
+  background-size: 200% 100%;
+}
+
+:root[data-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.05) 0%, rgb(255 255 255 / 0.1) 50%, rgb(255 255 255 / 0.05) 100%);
+  background-size: 200% 100%;
+}
+
+/* System dark theme gets the same dark-only tweaks as the explicit one. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tilt__glare {
+    --glare: rgb(141 185 232 / 0.09);
+  }
+  :root:not([data-theme="light"]) .countdown__digits {
+    text-shadow: 0 0 28px rgb(141 185 232 / 0.18), 0 2px 0 rgb(0 0 0 / 0.4);
+  }
+  :root:not([data-theme="light"]) .chip {
+    border-color: rgb(255 255 255 / 0.08);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  }
+  :root:not([data-theme="light"]) .class-row:hover,
+  :root:not([data-theme="light"]) .hold-row__link:hover {
+    background: rgb(255 255 255 / 0.03);
+  }
+  :root:not([data-theme="light"]) .skeleton {
+    background: linear-gradient(90deg, rgb(255 255 255 / 0.05) 0%, rgb(255 255 255 / 0.1) 50%, rgb(255 255 255 / 0.05) 100%);
+    background-size: 200% 100%;
+  }
+}

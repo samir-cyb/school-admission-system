@@ -1,0 +1,39 @@
+# Rendered at container start by the nginx image (envsubst on *.template).
+# Only defined environment variables are substituted, so nginx's own $uri etc. stay intact.
+
+server_tokens off;
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    charset utf-8;
+
+    # Security headers for every response (locations below avoid add_header so these are inherited).
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' ${API_URL}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+
+    # Runtime configuration: the backend URL comes from the API_URL environment variable (PDF §1.2).
+    location = /config.js {
+        default_type application/javascript;
+        expires -1;
+        return 200 'window.__APP_CONFIG__ = { apiUrl: "${API_URL}" };\n';
+    }
+
+    # Fingerprinted build output: cache for a long time.
+    location /assets/ {
+        expires 1y;
+        try_files $uri =404;
+    }
+
+    # Single-page app: unknown paths fall back to index.html (client-side routing).
+    location / {
+        expires -1;
+        try_files $uri $uri/ /index.html;
+    }
+}

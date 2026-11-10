@@ -1,0 +1,95 @@
+# School Admission System — `docker compose up` starts everything.
+#   frontend  http://localhost:5173
+#   backend   http://localhost:8080
+#   db        PostgreSQL 16 (not published to the host)
+# Tests:  docker compose --profile test run --rm tests
+# Bonus:  docker compose --profile bonus up   (second backend on :8081, same database)
+
+name: school-admission
+
+x-db-env: &db-env
+  POSTGRES_USER: ${POSTGRES_USER:-admission}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admission_local_pw}
+  POSTGRES_DB: ${POSTGRES_DB:-admission}
+
+x-backend: &backend
+  build:
+    context: ./backend
+    target: runtime
+  image: school-admission-backend:local
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+  environment:
+    ConnectionStrings__Default: "Host=db;Port=5432;Database=${POSTGRES_DB:-admission};Username=${POSTGRES_USER:-admission};Password=${POSTGRES_PASSWORD:-admission_local_pw}"
+    HOLD_DURATION_SECONDS: ${HOLD_DURATION_SECONDS:-600}
+    EXPIRY_SWEEP_SECONDS: ${EXPIRY_SWEEP_SECONDS:-5}
+    CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000}
+    RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-20000}
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment: *db-env
+    command: ["postgres", "-c", "max_connections=200"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # survives `docker compose down`
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    <<: *backend
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+    image: school-admission-frontend:local
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      API_URL: ${API_URL:-http://localhost:8080}
+    ports:
+      - "${FRONTEND_PORT:-5173}:8080"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # Bonus §1.6: a second backend process on another port, same database.
+  backend-2:
+    <<: *backend
+    profiles: ["bonus"]
+    ports:
+      - "8081:8080"
+
+  # Backend integration tests against the real PostgreSQL above (throw-away database per run).
+  tests:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      target: test
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TEST_DB_CONNECTION: "Host=db;Port=5432;Database=${POSTGRES_DB:-admission};Username=${POSTGRES_USER:-admission};Password=${POSTGRES_PASSWORD:-admission_local_pw}"
+
+volumes:
+  pgdata:

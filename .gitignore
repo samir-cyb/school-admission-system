@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------
+# Kept private: planning docs restate the confidential assignment
+# brief, and the brief itself must never be published.
+# ---------------------------------------------------------------
+docs/
+CLAUDE.md
+*.pdf
+
+# ---------------- secrets & local config ----------------
+.env
+.env.*
+!.env.example
+*.pfx
+*.key
+*.pem
+
+# ---------------- .NET (backend) ----------------
+bin/
+obj/
+publish/
+TestResults/
+*.user
+*.suo
+*.rsuser
+.vs/
+
+# ---------------- Node (frontend) ----------------
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------------- editors & OS ----------------
+.idea/
+.vscode/
+*.swp
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
